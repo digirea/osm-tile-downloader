@@ -59,7 +59,7 @@ var downloadTile = function (tile, startZoomLevel, endZoomLevel, retryCount) {
     if (options.checkTiles) {
       log.info("Tile '%s' is missing", tile.file);
       setImmediate(function () {
-        downloadTile(nextTile(startZoomLevel, endZoomLevel, tile), startZoomLevel, endZoomLevel);
+        downloadTile(nextTile(startZoomLevel, endZoomLevel, tile), startZoomLevel, endZoomLevel, retryCount);
       });
     }
     else {
@@ -72,7 +72,7 @@ var downloadTile = function (tile, startZoomLevel, endZoomLevel, retryCount) {
             if (retryCount < options.maxRetries) {
               retryCount++;
               log.info("Retrying %s", tile.url);
-              tiles.unshift(tile);
+              //tiles.unshift(tile);
             }
             else {
               log.info("Skipping tile: %s", tile.url);
@@ -89,7 +89,7 @@ var downloadTile = function (tile, startZoomLevel, endZoomLevel, retryCount) {
           resp.on('end', function () {
             log.debug('Done saving %s', tile.file);
             setTimeout(function () {
-              downloadTile(nextTile(startZoomLevel, endZoomLevel, tile), startZoomLevel, endZoomLevel);
+              downloadTile(nextTile(startZoomLevel, endZoomLevel, tile), startZoomLevel, endZoomLevel, retryCount);
             }, options.delay);
           });
 
@@ -101,7 +101,17 @@ var downloadTile = function (tile, startZoomLevel, endZoomLevel, retryCount) {
 
       req.on('error', function (error) {
         log.error('Error in request', error);
-        process.exit(2);
+        setTimeout(function () {
+          if (retryCount < options.maxRetries) {
+            retryCount++;
+            log.info("Retrying %s", tile.url);
+            ///tiles.unshift(tile);
+          }
+          else {
+            log.info("Skipping tile: %s", tile.url);
+          }
+          downloadTile(nextTile(startZoomLevel, endZoomLevel, tile), startZoomLevel, endZoomLevel, retryCount);
+        }, options.retryDelay);
       });
       req.end();
     }
@@ -111,7 +121,7 @@ var downloadTile = function (tile, startZoomLevel, endZoomLevel, retryCount) {
       if (!options.checkTiles) {
         log.debug('Skip downloading %s, already downloaded', tile.url);
       }
-      downloadTile(nextTile(startZoomLevel, endZoomLevel, tile), startZoomLevel, endZoomLevel);
+      downloadTile(nextTile(startZoomLevel, endZoomLevel, tile), startZoomLevel, endZoomLevel, retryCount);
     });
   }
 };
